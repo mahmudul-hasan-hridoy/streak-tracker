@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">Streak Tracker</string>
+    <string name="reset">RESET</string>
+    <string name="reset_confirmation_title">Reset Streak?</string>
+    <string name="reset_confirmation_text">Are you sure you want to reset your current streak?</string>
+    <string name="confirm_reset">Yes, Reset</string>
+    <string name="cancel">Cancel</string>
+</resources>
