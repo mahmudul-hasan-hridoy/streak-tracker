@@ -78,13 +78,13 @@ class MainActivity : ComponentActivity() {
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun StreakApp(viewModel: StreakViewModel, quotes: List<String>) {
-    val pressStartFont = FontFamily(Font(R.font.press_start_2p))
-    val vt323Font = FontFamily(Font(R.font.vt323))
-
-    val record by viewModel.streakRecord.collectAsStateWithLifecycle()
-    val todayUrgeCount by viewModel.todayUrgeCount.collectAsStateWithLifecycle()
+    @Composable
+    fun StreakApp(viewModel: StreakViewModel, quotes: List<String>) {
+        val pressStartFont = FontFamily.Monospace
+        val vt323Font = FontFamily.Monospace
+        
+        val recordState by viewModel.streakRecord.collectAsStateWithLifecycle()
+        val todayUrgeCount by viewModel.todayUrgeCount.collectAsStateWithLifecycle()
     val weeklyUrgeCount by viewModel.weeklyUrgeCount.collectAsStateWithLifecycle()
     val last7DaysUrges by viewModel.last7DaysUrges.collectAsStateWithLifecycle()
     var currentDays by remember { mutableIntStateOf(0) }
@@ -93,9 +93,9 @@ fun StreakApp(viewModel: StreakViewModel, quotes: List<String>) {
     var currentSeconds by remember { mutableIntStateOf(0) }
     var showResetDialog by remember { mutableStateOf(false) }
 
-    LaunchedEffect(record) {
+    LaunchedEffect(recordState) {
         while (true) {
-            val r = record
+            val r = recordState
             if (r != null) {
                 val diff = System.currentTimeMillis() - r.streakStartDateMillis
                 currentDays = TimeUnit.MILLISECONDS.toDays(diff).toInt()
@@ -143,7 +143,8 @@ fun StreakApp(viewModel: StreakViewModel, quotes: List<String>) {
                 .padding(horizontal = 24.dp)
                 .background(MaterialTheme.colorScheme.background)
         ) {
-            if (record != null) {
+            val currentRecord = recordState
+            if (currentRecord != null) {
                 val infiniteTransition = rememberInfiniteTransition(label = "blink")
                 val cursorAlpha by infiniteTransition.animateFloat(
                     initialValue = 0f,
@@ -262,13 +263,13 @@ fun StreakApp(viewModel: StreakViewModel, quotes: List<String>) {
                     } // End of top-centered Column
 
                     val dateFormat = SimpleDateFormat("yyyy.MM.dd", Locale.getDefault())
-                    val formattedDate = dateFormat.format(Date(record!!.streakStartDateMillis))
+                    val formattedDate = dateFormat.format(Date(currentRecord.streakStartDateMillis))
 
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Column {
                             Text("RECORD", fontFamily = vt323Font, fontWeight = FontWeight.Bold, color = mutedColor, fontSize = 12.sp, letterSpacing = 2.sp)
                             Spacer(Modifier.height(4.dp))
-                            Text("${record!!.longestStreakDays}", fontFamily = vt323Font, fontWeight = FontWeight.Bold, color = textColor, fontSize = 20.sp, letterSpacing = 2.sp)
+                            Text("${currentRecord.longestStreakDays}", fontFamily = vt323Font, fontWeight = FontWeight.Bold, color = textColor, fontSize = 20.sp, letterSpacing = 2.sp)
                         }
                         Column(horizontalAlignment = Alignment.End) {
                             Text("EPOCH", fontFamily = vt323Font, fontWeight = FontWeight.Bold, color = mutedColor, fontSize = 12.sp, letterSpacing = 2.sp)
