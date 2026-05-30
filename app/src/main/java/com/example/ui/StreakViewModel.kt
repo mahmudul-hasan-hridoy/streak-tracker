@@ -76,18 +76,30 @@ class StreakViewModel(
 
     private fun weekStartMillis(): Long {
         return Calendar.getInstance().apply {
-            set(Calendar.DAY_OF_WEEK, firstDayOfWeek)
             set(Calendar.HOUR_OF_DAY, 0)
             set(Calendar.MINUTE, 0)
             set(Calendar.SECOND, 0)
             set(Calendar.MILLISECOND, 0)
+            // Move back to the start of the week (Monday by default)
+            val daysToMonday = (get(Calendar.DAY_OF_WEEK) - Calendar.MONDAY + 7) % 7
+            add(Calendar.DAY_OF_MONTH, -daysToMonday)
         }.timeInMillis
     }
 
     val todayUrgeCount: StateFlow<Int> = flow {
         while (true) {
             emit(todayStartMillis())
-            delay(60_000)
+            // Calculate time until next midnight for more precise updates
+            val now = Calendar.getInstance()
+            val nextMidnight = Calendar.getInstance().apply {
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+                add(Calendar.DAY_OF_MONTH, 1)
+            }
+            val delayUntilMidnight = nextMidnight.timeInMillis - now.timeInMillis
+            delay(minOf(delayUntilMidnight, 60_000))
         }
     }.distinctUntilChanged().flatMapLatest { startMillis ->
         repository.getUrgeCountSince(startMillis)
@@ -96,7 +108,17 @@ class StreakViewModel(
     val weeklyUrgeCount: StateFlow<Int> = flow {
         while (true) {
             emit(weekStartMillis())
-            delay(60_000)
+            // Calculate time until next midnight or week boundary for more precise updates
+            val now = Calendar.getInstance()
+            val nextMidnight = Calendar.getInstance().apply {
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+                add(Calendar.DAY_OF_MONTH, 1)
+            }
+            val delayUntilMidnight = nextMidnight.timeInMillis - now.timeInMillis
+            delay(minOf(delayUntilMidnight, 60_000))
         }
     }.distinctUntilChanged().flatMapLatest { startMillis ->
         repository.getUrgeCountSince(startMillis)
@@ -104,20 +126,17 @@ class StreakViewModel(
 
     val last7DaysUrges: StateFlow<List<Int>> = flow {
         while (true) {
-            emit(weekStartMillis())
+            emit(System.currentTimeMillis())
             delay(60_000)
         }
-    }.distinctUntilChanged().flatMapLatest { weekStart ->
-        repository.getUrgesSince(weekStart).map { urges ->
+    }.distinctUntilChanged().flatMapLatest { _ ->
+        repository.getUrgesSince(weekStartMillis()).map { urges ->
             val counts = IntArray(7) { 0 }
-            val oneDayMillis = TimeUnit.DAYS.toMillis(1)
             for (urge in urges) {
-                val diffMillis = urge.timestampMillis - weekStart
-                if (diffMillis >= 0) {
-                     val index = (diffMillis / oneDayMillis).toInt()
-                     if (index in 0..6) {
-                         counts[index]++
-                     }
+                val cal = Calendar.getInstance().apply { timeInMillis = urge.timestampMillis }
+                val dayOfWeek = (cal.get(Calendar.DAY_OF_WEEK) - Calendar.MONDAY + 7) % 7
+                if (dayOfWeek in 0..6) {
+                    counts[dayOfWeek]++
                 }
             }
             counts.toList()
@@ -170,15 +189,14 @@ class StreakViewModel(
                 val days = TimeUnit.MILLISECONDS.toDays(diff).toInt()
                 currentLongest = maxOf(record.longestStreakDays, days)
                 
-                if (days > 0) {
-                    repository.insertAttempt(
-                        AttemptHistory(
-                            startMillis = record.streakStartDateMillis,
-                            endMillis = currentMillis,
-                            daysAchieved = days
-                        )
+                // Always save the attempt, even if it's 0 days, to preserve data integrity
+                repository.insertAttempt(
+                    AttemptHistory(
+                        startMillis = record.streakStartDateMillis,
+                        endMillis = currentMillis,
+                        daysAchieved = days
                     )
-                }
+                )
             }
             repository.insertOrUpdate(
                 StreakRecord(

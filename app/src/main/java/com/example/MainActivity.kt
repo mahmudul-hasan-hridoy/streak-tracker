@@ -298,13 +298,23 @@ fun StatsSection(
             lineHeight = 110.sp,
             color = textColor
         )
-        Box(
-            modifier = Modifier
-                .padding(bottom = 26.dp, start = 8.dp)
-                .width(36.dp)
-                .height(20.dp)
-                .background(androidx.compose.ui.graphics.Color(0xFFD12626).copy(alpha = cursorAlpha))
-        )
+        // Only render cursor when visible to avoid layout shift
+        if (cursorAlpha > 0.1f) {
+            Box(
+                modifier = Modifier
+                    .padding(bottom = 26.dp, start = 8.dp)
+                    .width(36.dp)
+                    .height(20.dp)
+                    .background(androidx.compose.ui.graphics.Color(0xFFD12626))
+            )
+        } else {
+            Spacer(
+                modifier = Modifier
+                    .padding(bottom = 26.dp, start = 8.dp)
+                    .width(36.dp)
+                    .height(20.dp)
+            )
+        }
     }
 
     Spacer(modifier = Modifier.height(16.dp))
@@ -336,8 +346,9 @@ fun QuoteSection(
     textColor: androidx.compose.ui.graphics.Color,
     vt323Font: FontFamily
 ) {
-    val todayHash = (System.currentTimeMillis() / (1000 * 60 * 60 * 24)).toInt()
-    val quoteIndex = (todayHash and Int.MAX_VALUE) % quotes.size
+    // Use Calendar day of year for timezone-independent quote rotation
+    val dayOfYear = Calendar.getInstance().get(Calendar.DAY_OF_YEAR)
+    val quoteIndex = dayOfYear % quotes.size
     val quoteOfDay = if (quotes.isNotEmpty()) quotes[quoteIndex] else "STAY STRONG."
 
     Text(
@@ -359,30 +370,56 @@ fun MilestoneSection(
     vt323Font: FontFamily
 ) {
     val milestones = listOf(7, 14, 30, 90, 180, 365)
-    val nextMilestone = milestones.firstOrNull { it > currentDays } ?: (currentDays + 30) // fallback if > 365
-    val prevMilestone = milestones.lastOrNull { it <= currentDays } ?: 0
     
-    val progress = if (nextMilestone == prevMilestone) 1f else {
-        ((currentDays - prevMilestone).toFloat() / (nextMilestone - prevMilestone).toFloat()).coerceIn(0f, 1f)
-    }
+    // Check if all milestones are achieved
+    val allAchieved = currentDays >= 365
+    
+    if (allAchieved) {
+        // Show completion message instead of progress bar
+        LinearProgressIndicator(
+            progress = { 1f },
+            modifier = Modifier.fillMaxWidth().height(2.dp),
+            color = textColor,
+            trackColor = mutedColor.copy(alpha = 0.2f),
+        )
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        Text(
+            text = "ALL MILESTONES ACHIEVED",
+            fontFamily = vt323Font,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Medium,
+            letterSpacing = 2.sp,
+            color = textColor
+        )
+    } else {
+        // Show progress toward next milestone
+        val nextMilestone = milestones.firstOrNull { it > currentDays } ?: 365
+        val prevMilestone = milestones.lastOrNull { it <= currentDays } ?: 0
+        
+        val progress = if (nextMilestone == prevMilestone) 1f else {
+            ((currentDays - prevMilestone).toFloat() / (nextMilestone - prevMilestone).toFloat()).coerceIn(0f, 1f)
+        }
 
-    LinearProgressIndicator(
-        progress = { progress },
-        modifier = Modifier.fillMaxWidth().height(2.dp),
-        color = textColor,
-        trackColor = mutedColor.copy(alpha = 0.2f),
-    )
-    
-    Spacer(modifier = Modifier.height(8.dp))
-    
-    Text(
-        text = "NEXT: $nextMilestone",
-        fontFamily = vt323Font,
-        fontSize = 10.sp,
-        fontWeight = FontWeight.Medium,
-        letterSpacing = 2.sp,
-        color = mutedColor
-    )
+        LinearProgressIndicator(
+            progress = { progress },
+            modifier = Modifier.fillMaxWidth().height(2.dp),
+            color = textColor,
+            trackColor = mutedColor.copy(alpha = 0.2f),
+        )
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        Text(
+            text = "NEXT: $nextMilestone",
+            fontFamily = vt323Font,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Medium,
+            letterSpacing = 2.sp,
+            color = mutedColor
+        )
+    }
 }
 
 @Composable
@@ -456,6 +493,7 @@ fun UrgeSection(
                     last7DaysUrges.forEachIndexed { index, count ->
                         val barHeight = (count.toFloat() / maxUrges.toFloat()) * size.height
                         val finalHeight = if (count > 0) barHeight.coerceAtLeast(2.dp.toPx()) else 2.dp.toPx()
+                        // Highlight today (Sunday/index 6) with full color
                         val color = if (index == 6) textColor else mutedColor
                         val startX = index * (barWidth + spacing)
                         val startY = size.height - finalHeight
@@ -473,11 +511,27 @@ fun UrgeSection(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     val dayLabels = listOf("M", "T", "W", "T", "F", "S", "S")
-                    dayLabels.forEach { label ->
-                        Text(label, fontSize = 8.sp, color = mutedColor, fontFamily = vt323Font)
+                    dayLabels.forEachIndexed { index, label ->
+                        // Highlight today's label
+                        Text(
+                            label,
+                            fontSize = 8.sp,
+                            color = if (index == 6) textColor else mutedColor,
+                            fontFamily = vt323Font,
+                            fontWeight = if (index == 6) FontWeight.Bold else FontWeight.Normal
+                        )
                     }
                 }
             }
+            
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "(Last bar = TODAY)",
+                fontFamily = vt323Font,
+                fontSize = 8.sp,
+                color = mutedColor.copy(alpha = 0.6f),
+                letterSpacing = 0.5.sp
+            )
         }
 
         Text(
@@ -502,10 +556,10 @@ fun ResetDialog(
 ) {
     var countdownMs by remember { mutableIntStateOf(3000) }
     LaunchedEffect(Unit) {
-        val startTime = System.currentTimeMillis()
+        // Use a robust countdown that decrements by a fixed amount each iteration
         while (countdownMs > 0) {
-            delay(16)
-            countdownMs = maxOf(0, 3000 - (System.currentTimeMillis() - startTime).toInt())
+            delay(100)
+            countdownMs = (countdownMs - 100).coerceAtLeast(0)
         }
     }
     
@@ -603,13 +657,19 @@ fun HistoryBottomSheet(
             Spacer(modifier = Modifier.height(24.dp))
 
             if (history.isEmpty()) {
-                Text(
-                    text = "NO PRIOR ATTEMPTS. STAY STRONG.",
-                    fontFamily = vt323Font,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = mutedColor
-                )
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "NO PRIOR ATTEMPTS. STAY STRONG.",
+                        fontFamily = vt323Font,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = mutedColor,
+                        textAlign = TextAlign.Center
+                    )
+                }
             } else {
                 val dateFormat = SimpleDateFormat("yyyy.MM.dd", Locale.getDefault())
                 history.forEach { attempt ->
