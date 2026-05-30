@@ -1,8 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item
-        android:width="66dp"
-        android:height="66dp"
-        android:drawable="@drawable/zero_logo_1780078203706"
-        android:gravity="center" />
-</layer-list>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#000000"
+        android:fillType="evenOdd"
+        android:pathData="M 44,24 L 64,24 L 72,32 L 72,76 L 64,84 L 44,84 L 36,76 L 36,32 Z
+                          M 48,32 L 60,32 L 64,36 L 64,72 L 60,76 L 48,76 L 44,72 L 44,36 Z"/>
+</vector>
