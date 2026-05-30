@@ -5,7 +5,7 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [StreakRecord::class, AttemptHistory::class, UrgeLog::class], version = 3, exportSchema = false)
+@Database(entities = [StreakRecord::class, AttemptHistory::class, UrgeLog::class], version = 3, exportSchema = true)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun streakDao(): StreakDao
     abstract fun attemptDao(): AttemptDao
