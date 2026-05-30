@@ -1,6 +1,6 @@
 {
-  "name": "Streak Tracker",
-  "description": "Minimal NoFap streak tracker ap.",
+  "name": "Zero",
+  "description": "Minimalist habit tracker",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
